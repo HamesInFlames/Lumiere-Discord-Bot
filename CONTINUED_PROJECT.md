@@ -23,48 +23,94 @@ The bot can automatically add orders to Google Calendar when dates are entered. 
 
 ---
 
-## Next Steps: Connect Google Calendar
+## ⭐ NEXT STEPS: Connect Google Calendar
 
 ### Step 1: Create a Google Cloud Project
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Click **Select a project** → **New Project**
+1. Go to **https://console.cloud.google.com/**
+2. Click **Select a project** (top left) → **New Project**
 3. Name it "Lumiere Bot" and click **Create**
+4. Wait for it to create, then make sure it's selected
 
 ### Step 2: Enable Google Calendar API
-1. In your project, go to **APIs & Services** → **Library**
-2. Search for "Google Calendar API"
-3. Click on it and press **Enable**
+1. In the left menu, go to **APIs & Services** → **Library**
+2. Search for "**Google Calendar API**"
+3. Click on it and press the blue **Enable** button
 
 ### Step 3: Create a Service Account
-1. Go to **APIs & Services** → **Credentials**
-2. Click **Create Credentials** → **Service Account**
+1. In the left menu, go to **APIs & Services** → **Credentials**
+2. Click **+ Create Credentials** (top) → **Service Account**
 3. Name it "lumiere-bot" and click **Create and Continue**
-4. Skip the optional steps, click **Done**
-5. Click on the service account you just created
-6. Go to **Keys** tab → **Add Key** → **Create new key** → **JSON**
-7. A JSON file will download - keep this safe!
+4. Skip the optional steps (just click **Continue** then **Done**)
+5. You'll see your service account in the list - **click on it**
+6. Go to the **Keys** tab
+7. Click **Add Key** → **Create new key** → Select **JSON** → **Create**
+8. **A JSON file will automatically download - SAVE THIS FILE!**
 
-### Step 4: Share Your Calendar
-1. Open [Google Calendar](https://calendar.google.com/)
-2. Find the calendar you want to use (or create a new one)
-3. Click the 3 dots next to it → **Settings and sharing**
-4. Under "Share with specific people", click **Add people**
-5. Paste the **service account email** from the JSON file
-6. Set permission to **Make changes to events**
-7. Copy the **Calendar ID** from the "Integrate calendar" section
-
-### Step 5: Update Your .env File
-```env
-GOOGLE_CALENDAR_ENABLED=true
-GOOGLE_CALENDAR_ID=your-calendar-id@group.calendar.google.com
-GOOGLE_SERVICE_ACCOUNT_EMAIL=lumiere-bot@your-project.iam.gserviceaccount.com
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...(copy the whole thing)...\n-----END PRIVATE KEY-----\n"
+### Step 4: Open the JSON File
+Open the downloaded JSON file in Notepad. It looks like this:
+```json
+{
+  "type": "service_account",
+  "project_id": "lumiere-bot-xxxxx",
+  "private_key_id": "abc123...",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADA...(very long)...\n-----END PRIVATE KEY-----\n",
+  "client_email": "lumiere-bot@lumiere-bot-xxxxx.iam.gserviceaccount.com",
+  "client_id": "123456789",
+  ...
+}
 ```
 
-### Step 6: Restart the Bot
+**You need TWO things from this file:**
+- `client_email` → This is your **GOOGLE_SERVICE_ACCOUNT_EMAIL**
+- `private_key` → This is your **GOOGLE_PRIVATE_KEY** (copy the ENTIRE thing including the `-----BEGIN` and `-----END` parts)
+
+### Step 5: Share Your Calendar with the Service Account
+1. Go to **https://calendar.google.com/**
+2. On the left sidebar, find the calendar you want to use (or create a new one called "Lumiere Orders")
+3. Click the **3 dots** next to the calendar name → **Settings and sharing**
+4. Scroll down to **"Share with specific people or groups"**
+5. Click **+ Add people and groups**
+6. Paste the **client_email** from the JSON file (e.g., `lumiere-bot@lumiere-bot-xxxxx.iam.gserviceaccount.com`)
+7. Set permission to **"Make changes to events"**
+8. Click **Send**
+
+### Step 6: Get Your Calendar ID
+1. Still in calendar settings, scroll down to **"Integrate calendar"**
+2. Copy the **Calendar ID** 
+   - For your primary calendar, it's usually your email address
+   - For other calendars, it looks like: `abc123xyz@group.calendar.google.com`
+
+### Step 7: Update Your .env File
+Add these lines to your `.env` file:
+
+```env
+GOOGLE_CALENDAR_ENABLED=true
+GOOGLE_CALENDAR_ID=paste_calendar_id_here
+GOOGLE_SERVICE_ACCOUNT_EMAIL=paste_client_email_from_json_here
+GOOGLE_PRIVATE_KEY="paste_entire_private_key_from_json_here"
+```
+
+**Example with real-looking values:**
+```env
+GOOGLE_CALENDAR_ENABLED=true
+GOOGLE_CALENDAR_ID=lumiere.orders@gmail.com
+GOOGLE_SERVICE_ACCOUNT_EMAIL=lumiere-bot@lumiere-bot-12345.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASC...(very long)...\n-----END PRIVATE KEY-----\n"
+```
+
+**Important:** The private key must be in quotes and keep all the `\n` characters!
+
+### Step 8: Restart the Bot
 ```bash
 npm start
 ```
+
+You should see:
+```
+📅 Google Calendar: ENABLED
+```
+
+Now when you submit orders with dates, they'll appear on your Google Calendar!
 
 ---
 
