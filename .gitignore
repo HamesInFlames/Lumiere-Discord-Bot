@@ -8,6 +8,7 @@ node_modules/
 *.json
 !package.json
 !package-lock.json
+!inventory.json
 
 # OS files
 .DS_Store

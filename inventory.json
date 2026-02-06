@@ -1,0 +1,88 @@
+{
+  "categories": {
+    "Drinks": [
+      "Milk",
+      "Almond milk",
+      "Oat milk",
+      "Skim milk",
+      "Lactose free milk",
+      "Cream",
+      "Matcha powder",
+      "Cinnamon powder",
+      "Decaf coffee bags",
+      "Large coffee bags",
+      "Small coffee bags"
+    ],
+    "Fruits": [
+      "Orange",
+      "Lemon",
+      "Apple",
+      "Ginger",
+      "Mint"
+    ],
+    "Others": [
+      "Sugar brown",
+      "Sugar white",
+      "Napkins",
+      "Mixer sticks",
+      "Plastic gloves",
+      "Tape",
+      "Straws",
+      "CO2",
+      "Wooden to go utensils",
+      "Cup holders"
+    ],
+    "Tea": [
+      "Cinnamon sticks",
+      "All spice",
+      "Honey",
+      "Chai",
+      "Earl grey",
+      "Peppermint",
+      "Iced princess",
+      "Chamomile",
+      "Coconut green",
+      "Strawberry kiwi",
+      "Raspberry lime",
+      "Lemon oolong",
+      "Ginger green",
+      "Jasmin",
+      "Green tea"
+    ],
+    "Containers": [
+      "Big boxes",
+      "Small boxes",
+      "Rectangle boxes",
+      "4 one biter containers",
+      "12 one biter containers",
+      "Small plastic box lids",
+      "Large plastic box lids",
+      "Baguette bags",
+      "Paper bags 10",
+      "Paper bags 12",
+      "Lumiere pastry paper",
+      "Large to go cups",
+      "Regular to go cups",
+      "Espresso to go cups",
+      "Cold to go cups",
+      "Blue lids",
+      "Cold togo lids",
+      "Shopping bags"
+    ],
+    "Syrups": [
+      "Vanilla",
+      "Caramel",
+      "Hazelnut",
+      "Pumpkin spice",
+      "Tiramisu",
+      "Cinnamon",
+      "Pistachio",
+      "Coconut",
+      "SF caramel",
+      "SF hazelnut",
+      "SF sweetener"
+    ]
+  },
+  "items": {},
+  "history": []
+}
