@@ -61,35 +61,34 @@ async function parseInventoryMessage(message) {
   const inventory = loadInventory();
   const allItems = getAllItemNames(inventory);
 
-  const systemPrompt = `You are a friendly inventory assistant for Lumière Patisserie bakery/cafe.
+  const systemPrompt = `You are the inventory brain for Lumière Patisserie. You understand ANYTHING related to stock/supplies.
 
-INVENTORY ITEMS BY CATEGORY:
-- Drinks: Milk, Almond milk, Oat milk, Skim milk, Lactose free milk, Cream, Matcha powder, Cinnamon powder, Decaf coffee bags, Large coffee bags, Small coffee bags
-- Fruits: Orange, Lemon, Apple, Ginger, Mint
-- Others: Sugar brown, Sugar white, Napkins, Mixer sticks, Plastic gloves, Tape, Straws, CO2, Wooden to go utensils, Cup holders
-- Tea: Cinnamon sticks, All spice, Honey, Chai, Earl grey, Peppermint, Iced princess, Chamomile, Coconut green, Strawberry kiwi, Raspberry lime, Lemon oolong, Ginger green, Jasmin, Green tea
-- Containers: Big boxes, Small boxes, Rectangle boxes, 4 one biter containers, 12 one biter containers, Small plastic box lids, Large plastic box lids, Baguette bags, Paper bags 10, Paper bags 12, Lumiere pastry paper, Large to go cups, Regular to go cups, Espresso to go cups, Cold to go cups, Blue lids, Cold togo lids, Shopping bags
-- Syrups: Vanilla, Caramel, Hazelnut, Pumpkin spice, Tiramisu, Cinnamon, Pistachio, Coconut, SF caramel, SF hazelnut, SF sweetener
+INVENTORY:
+Drinks: Milk, Almond milk, Oat milk, Skim milk, Lactose free milk, Cream, Matcha powder, Cinnamon powder, Decaf coffee bags, Large coffee bags, Small coffee bags
+Fruits: Orange, Lemon, Apple, Ginger, Mint
+Others: Sugar brown, Sugar white, Napkins, Mixer sticks, Plastic gloves, Tape, Straws, CO2, Wooden to go utensils, Cup holders
+Tea: Cinnamon sticks, All spice, Honey, Chai, Earl grey, Peppermint, Iced princess, Chamomile, Coconut green, Strawberry kiwi, Raspberry lime, Lemon oolong, Ginger green, Jasmin, Green tea
+Containers: Big boxes, Small boxes, Rectangle boxes, 4 one biter containers, 12 one biter containers, Small plastic box lids, Large plastic box lids, Baguette bags, Paper bags 10, Paper bags 12, Lumiere pastry paper, Large to go cups, Regular to go cups, Espresso to go cups, Cold to go cups, Blue lids, Cold togo lids, Shopping bags
+Syrups: Vanilla, Caramel, Hazelnut, Pumpkin spice, Tiramisu, Cinnamon, Pistachio, Coconut, SF caramel, SF hazelnut, SF sweetener
 
-Understand messages FLEXIBLY and return JSON:
+ACTIONS - be VERY flexible interpreting these:
+- "restock" = we have it now, filled up, got more, received, arrived, bought, etc.
+- "low" = running low, almost out, need soon, getting low, should order, etc.
+- "out" = none left, ran out, empty, finished, need ASAP, etc.
+- "status" = show inventory, list items, what do we need, what's the status, check stock, show me, list, etc.
+- "ignore" = ONLY for completely unrelated messages (like "hello" or "how are you")
 
-ACTIONS:
-- "restock" = items refilled/restocked (e.g., "got milk", "refilled coffee", "restocked all teas")
-- "low" = running low (e.g., "almost out of napkins", "need more straws soon", "low on milk")  
-- "out" = completely out (e.g., "no more cups", "out of vanilla", "we ran out")
-- "status" = wants to see inventory (e.g., "show everything", "list all", "what do we need", "inventory", "status", "what's low")
-- "ignore" = not inventory related (casual chat, questions about other things)
+OUTPUT JSON only:
+{"action":"restock|low|out|status|ignore","items":["item1","item2"],"message":"friendly response"}
 
-RESPONSE FORMAT (valid JSON only):
-{"action": "restock|low|out|status|ignore", "items": ["item1"], "message": "brief friendly message"}
-
-RULES:
-- Match items even with typos or abbreviations (e.g., "oat" = "Oat milk", "sf van" = "SF vanilla")
-- "all milks", "all teas", "all syrups" = expand to all items in that category
-- For "status", items = []
-- For "ignore", items = [], message = ""
-- Be generous - if it MIGHT be inventory related, treat it as such
-- Casual greetings or off-topic = "ignore"`;
+CRITICAL RULES:
+1. If message mentions ANY inventory item or asks about stock/supplies → process it (NOT ignore)
+2. "show all items", "list everything", "what do we have", "inventory list" = status
+3. Match items loosely: "milk" = Milk, "oat" = Oat milk, "cups" = all cup types, "bags" = all bag types
+4. "all X" = expand to all items in category
+5. Typos OK: "npakins" = Napkins, "cofee" = coffee bags
+6. When in doubt, try to help - only "ignore" truly unrelated messages
+7. Be helpful and friendly in your message`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -231,32 +230,50 @@ function getPredictions() {
 
 // Format status as Discord message
 function formatStatusMessage() {
+  const inventory = loadInventory();
   const status = getInventoryStatus();
-  let message = '';
+  let message = '📦 **INVENTORY STATUS**\n\n';
 
+  // Show problems first
   if (status.out.length > 0) {
-    message += `❌ **OUT OF STOCK** (${status.out.length}):\n${status.out.join(', ')}\n\n`;
+    message += `❌ **OUT** (${status.out.length}): ${status.out.join(', ')}\n\n`;
   }
   
   if (status.low.length > 0) {
-    message += `⚠️ **RUNNING LOW** (${status.low.length}):\n${status.low.join(', ')}\n\n`;
+    message += `⚠️ **LOW** (${status.low.length}): ${status.low.join(', ')}\n\n`;
   }
 
   if (status.out.length === 0 && status.low.length === 0) {
-    message += '✅ **All tracked items are stocked!**\n\n';
+    if (status.stocked.length > 0) {
+      message += '✅ **All tracked items are stocked!**\n\n';
+    }
+  }
+
+  // Show stocked items
+  if (status.stocked.length > 0) {
+    message += `✅ **STOCKED** (${status.stocked.length}): ${status.stocked.join(', ')}\n\n`;
+  }
+
+  // Show untracked items
+  if (status.unknown.length > 0) {
+    message += `📝 **NOT YET TRACKED** (${status.unknown.length}): ${status.unknown.slice(0, 10).join(', ')}`;
+    if (status.unknown.length > 10) {
+      message += ` +${status.unknown.length - 10} more`;
+    }
+    message += '\n\n';
   }
 
   // Add predictions if available
   const predictions = getPredictions();
   if (predictions.length > 0) {
-    message += `📊 **Predictions** (based on history):\n`;
-    for (const pred of predictions) {
+    message += `📊 **PREDICTIONS**:\n`;
+    for (const pred of predictions.slice(0, 5)) {
       const emoji = pred.urgent ? '🔴' : '🟡';
-      message += `${emoji} ${pred.item}: Usually restock every ~${pred.avgDays} days (${pred.daysSinceRestock} days since last)\n`;
+      message += `${emoji} ${pred.item}: restock every ~${pred.avgDays} days\n`;
     }
   }
 
-  return message || 'No inventory data yet. Start by telling me what you restocked or what\'s running low!';
+  return message;
 }
 
 // Process inventory message and return response
