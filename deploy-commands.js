@@ -27,6 +27,15 @@ const commands = [
   new SlashCommandBuilder()
     .setName('wholesale')
     .setDescription('Submit a wholesale order (opens a form)'),
+
+  new SlashCommandBuilder()
+    .setName('delete')
+    .setDescription('Delete an order by ID')
+    .addStringOption(option =>
+      option.setName('order_id')
+        .setDescription('The order ID (e.g., pre261, who261)')
+        .setRequired(true)
+    ),
 ].map(cmd => cmd.toJSON());
 
 // Register commands with Discord
@@ -45,7 +54,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     );
     
     console.log('✅ Slash commands registered successfully!');
-    console.log('   Commands: /preorder, /wholesale');
+    console.log('   Commands: /preorder, /wholesale, /delete');
     console.log('');
     console.log('Next step: Run the bot with: node index.js');
   } catch (error) {

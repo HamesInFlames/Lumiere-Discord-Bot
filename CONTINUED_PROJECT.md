@@ -6,122 +6,69 @@ The bot is fully functional with the following features:
 ### Commands
 - `/preorder` - Submit customer preorders
 - `/wholesale` - Submit wholesale orders (with kitchen selection: TOVA / LUMIERE / BOTH)
+- `/delete` - Delete an order by ID (with confirmation)
 
 ### Workflow
 1. Staff uses command → form opens
-2. Form is submitted → order posts directly to output channel
-3. To delete an order, right-click the message and delete it
+2. Form is submitted → order posts directly to output channel + added to Google Calendar
+3. To delete an order, use `/delete ORDER_ID` (e.g., `/delete PRE-0203-001`)
 
 ### Google Calendar Integration
-**Status: Code is ready, needs credentials**
+**Status: ✅ Connected and working!**
 
-The bot can automatically add orders to Google Calendar when dates are entered. It uses smart date parsing that understands:
+The bot automatically adds orders to Google Calendar when dates are entered. It uses smart date parsing that understands:
 - "Feb 13" → February 13, 2026
 - "Friday" or "fri" → The upcoming Friday
 - "Feb 14 2pm" → February 14, 2026 at 2:00 PM
 - "next monday" → The next Monday
 
+**Current Setup:**
+- Calendar ID: `4d06fb7a5549ea70a68b7101d5ae280427c6c7c2d5a0a147f1286398811997ba@group.calendar.google.com`
+- Service Account: `lumiere-bot@lumiere-bot-486622.iam.gserviceaccount.com`
+- Key File: `lumiere-bot-486622-3c8669e3b5cf.json` (in project folder, NOT committed to git)
+
 ---
 
-## ⭐ NEXT STEPS: Connect Google Calendar
+## Google Calendar Setup (Reference)
 
-### Step 1: Create a Google Cloud Project
-1. Go to **https://console.cloud.google.com/**
-2. Click **Select a project** (top left) → **New Project**
-3. Name it "Lumiere Bot" and click **Create**
-4. Wait for it to create, then make sure it's selected
+If you need to set this up again or on a different machine:
 
-### Step 2: Enable Google Calendar API
-1. In the left menu, go to **APIs & Services** → **Library**
-2. Search for "**Google Calendar API**"
-3. Click on it and press the blue **Enable** button
+### Step 1: Enable Google Calendar API
+1. Go to **https://console.cloud.google.com/** (project: lumiere-bot-486622)
+2. Go to **APIs & Services** → **Library**
+3. Search for "**Google Calendar API**" and **Enable** it
 
-### Step 3: Create a Service Account
-1. In the left menu, go to **APIs & Services** → **Credentials**
-2. Click **+ Create Credentials** (top) → **Service Account**
-3. Name it "lumiere-bot" and click **Create and Continue**
-4. Skip the optional steps (just click **Continue** then **Done**)
-5. You'll see your service account in the list - **click on it**
-6. Go to the **Keys** tab
-7. Click **Add Key** → **Create new key** → Select **JSON** → **Create**
-8. **A JSON file will automatically download - SAVE THIS FILE!**
+### Step 2: Get the Service Account Key
+1. Go to **APIs & Services** → **Credentials**
+2. Click on the service account **lumiere-bot**
+3. Go to **Keys** tab → **Add Key** → **Create new key** → **JSON**
+4. Save the downloaded JSON file in the project folder
 
-### Step 4: Open the JSON File
-Open the downloaded JSON file in Notepad. It looks like this:
-```json
-{
-  "type": "service_account",
-  "project_id": "lumiere-bot-xxxxx",
-  "private_key_id": "abc123...",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADA...(very long)...\n-----END PRIVATE KEY-----\n",
-  "client_email": "lumiere-bot@lumiere-bot-xxxxx.iam.gserviceaccount.com",
-  "client_id": "123456789",
-  ...
-}
-```
-
-**You need TWO things from this file:**
-- `client_email` → This is your **GOOGLE_SERVICE_ACCOUNT_EMAIL**
-- `private_key` → This is your **GOOGLE_PRIVATE_KEY** (copy the ENTIRE thing including the `-----BEGIN` and `-----END` parts)
-
-### Step 5: Share Your Calendar with the Service Account
-1. Go to **https://calendar.google.com/**
-2. On the left sidebar, find the calendar you want to use (or create a new one called "Lumiere Orders")
-3. Click the **3 dots** next to the calendar name → **Settings and sharing**
-4. Scroll down to **"Share with specific people or groups"**
-5. Click **+ Add people and groups**
-6. Paste the **client_email** from the JSON file (e.g., `lumiere-bot@lumiere-bot-xxxxx.iam.gserviceaccount.com`)
-7. Set permission to **"Make changes to events"**
-8. Click **Send**
-
-### Step 6: Get Your Calendar ID
-1. Still in calendar settings, scroll down to **"Integrate calendar"**
-2. Copy the **Calendar ID** 
-   - For your primary calendar, it's usually your email address
-   - For other calendars, it looks like: `abc123xyz@group.calendar.google.com`
-
-### Step 7: Update Your .env File
-Add these lines to your `.env` file:
-
+### Step 3: Update .env
 ```env
 GOOGLE_CALENDAR_ENABLED=true
-GOOGLE_CALENDAR_ID=paste_calendar_id_here
-GOOGLE_SERVICE_ACCOUNT_EMAIL=paste_client_email_from_json_here
-GOOGLE_PRIVATE_KEY="paste_entire_private_key_from_json_here"
+GOOGLE_CALENDAR_ID=your_calendar_id@group.calendar.google.com
+GOOGLE_KEY_FILE=your-key-file.json
 ```
 
-**Example with real-looking values:**
-```env
-GOOGLE_CALENDAR_ENABLED=true
-GOOGLE_CALENDAR_ID=lumiere.orders@gmail.com
-GOOGLE_SERVICE_ACCOUNT_EMAIL=lumiere-bot@lumiere-bot-12345.iam.gserviceaccount.com
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASC...(very long)...\n-----END PRIVATE KEY-----\n"
-```
-
-**Important:** The private key must be in quotes and keep all the `\n` characters!
-
-### Step 8: Restart the Bot
-```bash
-npm start
-```
-
-You should see:
-```
-📅 Google Calendar: ENABLED
-```
-
-Now when you submit orders with dates, they'll appear on your Google Calendar!
+### Step 4: Share Calendar with Service Account
+1. Open Google Calendar
+2. Click 3 dots on your calendar → **Settings and sharing**
+3. Under "Share with specific people", add the service account email
+4. Set permission to **"Make changes to events"**
 
 ---
 
 ## File Structure
 ```
 lumiere-discord-bot/
-├── .env                    # Credentials (DO NOT COMMIT)
-├── deploy-commands.js      # Registers slash commands with Discord
-├── index.js               # Main bot code
-├── package.json           # Dependencies
-└── CONTINUED_PROJECT.md   # This file
+├── .env                              # Credentials (DO NOT COMMIT)
+├── .gitignore                        # Prevents secrets from being committed
+├── deploy-commands.js                # Registers slash commands with Discord
+├── index.js                          # Main bot code
+├── package.json                      # Dependencies
+├── lumiere-bot-486622-*.json         # Google Service Account key (DO NOT COMMIT)
+└── CONTINUED_PROJECT.md              # This file
 ```
 
 ---
@@ -139,11 +86,10 @@ PREORDER_OUTPUT_CHANNEL_ID=channel_id
 WHOLESALE_INTAKE_CHANNEL_ID=channel_id
 WHOLESALE_OUTPUT_CHANNEL_ID=channel_id
 
-# Google Calendar (optional)
-GOOGLE_CALENDAR_ENABLED=false
-GOOGLE_CALENDAR_ID=calendar_id
-GOOGLE_SERVICE_ACCOUNT_EMAIL=email
-GOOGLE_PRIVATE_KEY=private_key
+# Google Calendar
+GOOGLE_CALENDAR_ENABLED=true
+GOOGLE_CALENDAR_ID=your_calendar_id@group.calendar.google.com
+GOOGLE_KEY_FILE=your-service-account-key.json
 ```
 
 ---
