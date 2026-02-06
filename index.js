@@ -3,6 +3,7 @@
  * ================================
  * Handles preorder and wholesale order management.
  * Orders are posted directly to output channels and optionally added to Google Calendar.
+ * Includes AI-powered inventory management.
  */
 
 require('dotenv').config({ quiet: true });
@@ -25,12 +26,19 @@ const chrono = require('chrono-node');
 // Google Calendar API
 const { google } = require('googleapis');
 
+// Inventory Manager
+const inventoryManager = require('./inventory-manager');
+
 // ===========================================
 // CONFIGURATION
 // ===========================================
 
 const client = new Client({ 
-  intents: [GatewayIntentBits.Guilds] 
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ] 
 });
 
 // Channel IDs from .env
@@ -39,7 +47,11 @@ const CHANNELS = {
   preorderOutput: process.env.PREORDER_OUTPUT_CHANNEL_ID,
   wholesaleIntake: process.env.WHOLESALE_INTAKE_CHANNEL_ID,
   wholesaleOutput: process.env.WHOLESALE_OUTPUT_CHANNEL_ID,
+  inventory: process.env.INVENTORY_CHANNEL_ID,
 };
+
+// Initialize OpenAI for inventory management
+const OPENAI_ENABLED = inventoryManager.initOpenAI(process.env.OPENAI_API_KEY);
 
 // Google Calendar configuration
 const GOOGLE_CALENDAR_ENABLED = process.env.GOOGLE_CALENDAR_ENABLED === 'true';
@@ -843,6 +855,37 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 // ===========================================
+// INVENTORY MESSAGE LISTENER
+// ===========================================
+
+client.on('messageCreate', async (message) => {
+  // Ignore bot messages
+  if (message.author.bot) return;
+  
+  // Only process messages in the inventory channel
+  if (message.channel.id !== CHANNELS.inventory) return;
+  
+  // Check if OpenAI is enabled
+  if (!OPENAI_ENABLED) {
+    return message.reply('⚠️ Inventory AI is not configured. Add OPENAI_API_KEY to enable.');
+  }
+
+  try {
+    // Show typing indicator while processing
+    await message.channel.sendTyping();
+    
+    // Process the message with AI
+    const response = await inventoryManager.processInventoryMessage(message.content);
+    
+    // Reply with the result
+    await message.reply(response);
+  } catch (error) {
+    console.error('Inventory message error:', error);
+    await message.reply('❌ Error processing message. Please try again.');
+  }
+});
+
+// ===========================================
 // BOT STARTUP
 // ===========================================
 
@@ -863,6 +906,13 @@ client.once('clientReady', () => {
     console.log('  📅 Google Calendar: ENABLED');
   } else {
     console.log('  📅 Google Calendar: DISABLED');
+  }
+  if (OPENAI_ENABLED && CHANNELS.inventory) {
+    console.log('  📦 Inventory AI: ENABLED');
+  } else if (!OPENAI_ENABLED) {
+    console.log('  📦 Inventory AI: DISABLED (no API key)');
+  } else {
+    console.log('  📦 Inventory AI: DISABLED (no channel)');
   }
   console.log('========================================');
   console.log('');
