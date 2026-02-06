@@ -52,17 +52,32 @@ if (GOOGLE_CALENDAR_ENABLED) {
   try {
     const path = require('path');
     const fs = require('fs');
-    const keyFilePath = path.join(__dirname, GOOGLE_KEY_FILE);
     
-    if (fs.existsSync(keyFilePath)) {
+    // Method 1: Use environment variables (for Railway/cloud hosting)
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
       const auth = new google.auth.GoogleAuth({
-        keyFile: keyFilePath,
+        credentials: {
+          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+          private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        },
         scopes: ['https://www.googleapis.com/auth/calendar'],
       });
       calendar = google.calendar({ version: 'v3', auth });
-      console.log('✅ Google Calendar connected');
-    } else {
-      console.log('⚠️ Google Calendar key file not found:', GOOGLE_KEY_FILE);
+      console.log('✅ Google Calendar connected (via env vars)');
+    }
+    // Method 2: Use JSON key file (for local development)
+    else {
+      const keyFilePath = path.join(__dirname, GOOGLE_KEY_FILE);
+      if (fs.existsSync(keyFilePath)) {
+        const auth = new google.auth.GoogleAuth({
+          keyFile: keyFilePath,
+          scopes: ['https://www.googleapis.com/auth/calendar'],
+        });
+        calendar = google.calendar({ version: 'v3', auth });
+        console.log('✅ Google Calendar connected (via key file)');
+      } else {
+        console.log('⚠️ Google Calendar: No credentials found (key file or env vars)');
+      }
     }
   } catch (error) {
     console.error('❌ Google Calendar setup failed:', error.message);
