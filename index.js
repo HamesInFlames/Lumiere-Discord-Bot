@@ -877,11 +877,13 @@ client.on('messageCreate', async (message) => {
     // Process the message with AI
     const response = await inventoryManager.processInventoryMessage(message.content);
     
-    // Reply with the result
-    await message.reply(response);
+    // Only reply if there's a response (null = ignore the message)
+    if (response) {
+      await message.reply(response);
+    }
   } catch (error) {
     console.error('Inventory message error:', error);
-    await message.reply('❌ Error processing message. Please try again.');
+    // Don't reply on errors to avoid spam
   }
 });
 

@@ -61,31 +61,35 @@ async function parseInventoryMessage(message) {
   const inventory = loadInventory();
   const allItems = getAllItemNames(inventory);
 
-  const systemPrompt = `You are an inventory assistant for a bakery/cafe called Lumière Patisserie.
+  const systemPrompt = `You are a friendly inventory assistant for Lumière Patisserie bakery/cafe.
 
-Available inventory items:
-${allItems.join(', ')}
+INVENTORY ITEMS BY CATEGORY:
+- Drinks: Milk, Almond milk, Oat milk, Skim milk, Lactose free milk, Cream, Matcha powder, Cinnamon powder, Decaf coffee bags, Large coffee bags, Small coffee bags
+- Fruits: Orange, Lemon, Apple, Ginger, Mint
+- Others: Sugar brown, Sugar white, Napkins, Mixer sticks, Plastic gloves, Tape, Straws, CO2, Wooden to go utensils, Cup holders
+- Tea: Cinnamon sticks, All spice, Honey, Chai, Earl grey, Peppermint, Iced princess, Chamomile, Coconut green, Strawberry kiwi, Raspberry lime, Lemon oolong, Ginger green, Jasmin, Green tea
+- Containers: Big boxes, Small boxes, Rectangle boxes, 4 one biter containers, 12 one biter containers, Small plastic box lids, Large plastic box lids, Baguette bags, Paper bags 10, Paper bags 12, Lumiere pastry paper, Large to go cups, Regular to go cups, Espresso to go cups, Cold to go cups, Blue lids, Cold togo lids, Shopping bags
+- Syrups: Vanilla, Caramel, Hazelnut, Pumpkin spice, Tiramisu, Cinnamon, Pistachio, Coconut, SF caramel, SF hazelnut, SF sweetener
 
-Your job is to understand inventory-related messages and return a JSON response.
+Understand messages FLEXIBLY and return JSON:
 
-Types of actions:
-1. "restock" - items have been restocked/refilled
-2. "low" - items are running low
-3. "out" - items are completely out
-4. "status" - user wants to see current inventory status
-5. "unknown" - message is not inventory-related
+ACTIONS:
+- "restock" = items refilled/restocked (e.g., "got milk", "refilled coffee", "restocked all teas")
+- "low" = running low (e.g., "almost out of napkins", "need more straws soon", "low on milk")  
+- "out" = completely out (e.g., "no more cups", "out of vanilla", "we ran out")
+- "status" = wants to see inventory (e.g., "show everything", "list all", "what do we need", "inventory", "status", "what's low")
+- "ignore" = not inventory related (casual chat, questions about other things)
 
-Response format (always return valid JSON):
-{
-  "action": "restock|low|out|status|unknown",
-  "items": ["item1", "item2"],
-  "message": "brief confirmation message"
-}
+RESPONSE FORMAT (valid JSON only):
+{"action": "restock|low|out|status|ignore", "items": ["item1"], "message": "brief friendly message"}
 
-Match items to the available list even if spelled slightly differently.
-If user says "all milks" or "all teas", expand to all items in that category.
-If action is "status", items array should be empty.
-If action is "unknown", explain what you can help with.`;
+RULES:
+- Match items even with typos or abbreviations (e.g., "oat" = "Oat milk", "sf van" = "SF vanilla")
+- "all milks", "all teas", "all syrups" = expand to all items in that category
+- For "status", items = []
+- For "ignore", items = [], message = ""
+- Be generous - if it MIGHT be inventory related, treat it as such
+- Casual greetings or off-topic = "ignore"`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -260,11 +264,16 @@ async function processInventoryMessage(message) {
   const parsed = await parseInventoryMessage(message);
   
   if (!parsed) {
-    return '❌ Sorry, I couldn\'t understand that. Try something like "restocked milk" or "running low on napkins"';
+    return null; // Don't respond if we couldn't parse
+  }
+
+  // Ignore non-inventory messages (don't respond)
+  if (parsed.action === 'ignore') {
+    return null;
   }
 
   if (parsed.action === 'unknown') {
-    return `🤔 ${parsed.message}\n\nTry saying things like:\n• "restocked milk and coffee"\n• "running low on napkins"\n• "out of straws"\n• "what do we need?"`;
+    return null; // Don't respond to unknown messages
   }
 
   if (parsed.action === 'status') {
