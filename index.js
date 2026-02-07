@@ -141,8 +141,11 @@ function generateOrderId(type) {
 function parseDate(dateString) {
   if (!dateString) return null;
   
-  // Use chrono to parse the date
-  const parsed = chrono.parseDate(dateString, new Date(), { forwardDate: true });
+  // Get current time in Toronto timezone for reference
+  const torontoNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Toronto' }));
+  
+  // Use chrono to parse the date with Toronto time as reference
+  const parsed = chrono.parseDate(dateString, torontoNow, { forwardDate: true });
   return parsed;
 }
 
