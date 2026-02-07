@@ -942,13 +942,16 @@ client.on('messageCreate', async (message) => {
   if (!OPENAI_ENABLED) {
     return message.reply('⚠️ Inventory AI is not configured. Add OPENAI_API_KEY to enable.');
   }
+  
+  // Get user ID for tracking clarifications
+  const userId = message.author.id;
 
   try {
     // Show typing indicator while processing
     await message.channel.sendTyping();
     
-    // Process the message with AI
-    const response = await inventoryManager.processInventoryMessage(message.content);
+    // Process the message with AI (pass userId for clarification tracking)
+    const response = await inventoryManager.processInventoryMessage(message.content, userId);
     
     // Only reply if there's a response (null = ignore the message)
     if (response) {
@@ -957,6 +960,51 @@ client.on('messageCreate', async (message) => {
   } catch (error) {
     console.error('Inventory message error:', error);
     // Don't reply on errors to avoid spam
+  }
+});
+
+// ===========================================
+// DAILY INVENTORY PROMPTS (6pm and 9pm)
+// ===========================================
+
+function scheduleDailyPrompts() {
+  const cron = require('node-cron');
+  
+  // 6pm daily - End of day check-in
+  cron.schedule('0 18 * * *', async () => {
+    if (!CHANNELS.inventory) return;
+    try {
+      const channel = await client.channels.fetch(CHANNELS.inventory);
+      const message = inventoryManager.getDailyPromptMessage();
+      await channel.send(message);
+      console.log('📋 Sent daily inventory prompt (6pm)');
+    } catch (error) {
+      console.error('Error sending daily prompt:', error.message);
+    }
+  }, { timezone: 'America/Toronto' });
+  
+  // 9pm daily - Follow up if needed
+  cron.schedule('0 21 * * *', async () => {
+    if (!CHANNELS.inventory) return;
+    try {
+      const status = inventoryManager.getInventoryStatus();
+      // Only send if there are items needing attention
+      if (status.low.length > 0 || status.out.length > 0) {
+        const channel = await client.channels.fetch(CHANNELS.inventory);
+        await channel.send(`🌙 Quick reminder - we still have ${status.low.length + status.out.length} items running low or out. All good for tomorrow?`);
+      }
+    } catch (error) {
+      console.error('Error sending evening prompt:', error.message);
+    }
+  }, { timezone: 'America/Toronto' });
+  
+  console.log('⏰ Daily inventory prompts scheduled (6pm & 9pm Toronto)');
+}
+
+// Start daily prompts when bot is ready
+client.once('ready', () => {
+  if (OPENAI_ENABLED && CHANNELS.inventory) {
+    scheduleDailyPrompts();
   }
 });
 
