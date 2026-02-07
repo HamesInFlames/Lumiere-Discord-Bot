@@ -18,6 +18,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  StringSelectMenuBuilder,
 } = require('discord.js');
 
 // Date parsing library
@@ -567,83 +568,88 @@ client.on('interactionCreate', async (interaction) => {
       });
     }
 
-    // /delete command - find and confirm deletion
+    // /delete command - show all active orders to choose from
     if (interaction.commandName === 'delete') {
-      const orderId = interaction.options.getString('order_id').toLowerCase();
-      
       await interaction.deferReply({ ephemeral: true });
 
       try {
-        // Determine which channel to search based on order ID prefix
-        let channelId;
-        let orderType;
-        if (orderId.startsWith('pre')) {
-          channelId = CHANNELS.preorderOutput;
-          orderType = 'Preorder';
-        } else if (orderId.startsWith('who')) {
-          channelId = CHANNELS.wholesaleOutput;
-          orderType = 'Wholesale';
-        } else {
-          return interaction.editReply({
-            content: `❌ Invalid order ID format. Start with \`pre\` or \`who\` (e.g., pre261, who261)`,
-          });
-        }
-
-        const channel = await client.channels.fetch(channelId);
+        // Fetch orders from both channels
+        const orders = [];
         
-        // Search recent messages for the order ID
-        const messages = await channel.messages.fetch({ limit: 100 });
-        const orderMessage = messages.find(msg => 
-          msg.embeds.length > 0 && 
-          msg.embeds[0].description?.includes(orderId)
-        );
+        // Fetch preorders
+        const preorderChannel = await client.channels.fetch(CHANNELS.preorderOutput);
+        const preorderMessages = await preorderChannel.messages.fetch({ limit: 50 });
+        preorderMessages.forEach(msg => {
+          if (msg.embeds.length > 0 && msg.embeds[0].description) {
+            const match = msg.embeds[0].description.match(/`(pre\d+)`/i);
+            if (match) {
+              const customerField = msg.embeds[0].fields?.find(f => f.name.includes('Customer'));
+              const pickupField = msg.embeds[0].fields?.find(f => f.name.includes('Pickup'));
+              orders.push({
+                id: match[1],
+                type: 'Preorder',
+                messageId: msg.id,
+                channelId: CHANNELS.preorderOutput,
+                customer: customerField?.value || 'Unknown',
+                date: pickupField?.value || '',
+              });
+            }
+          }
+        });
 
-        if (!orderMessage) {
+        // Fetch wholesale orders
+        const wholesaleChannel = await client.channels.fetch(CHANNELS.wholesaleOutput);
+        const wholesaleMessages = await wholesaleChannel.messages.fetch({ limit: 50 });
+        wholesaleMessages.forEach(msg => {
+          if (msg.embeds.length > 0 && msg.embeds[0].description) {
+            const match = msg.embeds[0].description.match(/`(who\d+)`/i);
+            if (match) {
+              const businessField = msg.embeds[0].fields?.find(f => f.name.includes('Business'));
+              const deliveryField = msg.embeds[0].fields?.find(f => f.name.includes('Delivery'));
+              orders.push({
+                id: match[1],
+                type: 'Wholesale',
+                messageId: msg.id,
+                channelId: CHANNELS.wholesaleOutput,
+                customer: businessField?.value || 'Unknown',
+                date: deliveryField?.value || '',
+              });
+            }
+          }
+        });
+
+        if (orders.length === 0) {
           return interaction.editReply({
-            content: `❌ Order \`${orderId}\` not found.\n\nMake sure the order ID is correct and the order hasn't been deleted already.`,
+            content: '📋 No active orders found.',
           });
         }
 
-        // Extract order details from embed
-        const embed = orderMessage.embeds[0];
-        
-        // Create confirmation embed
-        const confirmEmbed = new EmbedBuilder()
-          .setTitle(`🗑️ Delete ${orderType}?`)
-          .setDescription(`**Order ID:** \`${orderId}\``)
-          .setColor(0xFF6B6B)
-          .setTimestamp();
+        // Sort by ID (most recent first)
+        orders.sort((a, b) => b.id.localeCompare(a.id));
 
-        // Add fields from original embed
-        if (embed.fields) {
-          embed.fields.forEach(field => {
-            confirmEmbed.addFields({ name: field.name, value: field.value, inline: field.inline });
-          });
-        }
+        // Create select menu (max 25 options)
+        const selectOptions = orders.slice(0, 25).map(order => ({
+          label: `${order.id.toUpperCase()} - ${order.customer}`.substring(0, 100),
+          description: `${order.type} | ${order.date}`.substring(0, 100),
+          value: `${order.messageId}_${order.channelId}_${order.id}`,
+        }));
 
-        // Create confirm/cancel buttons
-        const confirmButton = new ButtonBuilder()
-          .setCustomId(`delete_confirm_${orderMessage.id}`)
-          .setLabel('Yes, Delete')
-          .setStyle(ButtonStyle.Danger);
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('delete_select_order')
+          .setPlaceholder('Select an order to delete...')
+          .addOptions(selectOptions);
 
-        const cancelButton = new ButtonBuilder()
-          .setCustomId('delete_cancel')
-          .setLabel('Cancel')
-          .setStyle(ButtonStyle.Secondary);
-
-        const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
+        const row = new ActionRowBuilder().addComponents(selectMenu);
 
         return interaction.editReply({
-          content: `⚠️ **Are you sure you want to delete this order?**`,
-          embeds: [confirmEmbed],
+          content: `📋 **Active Orders (${orders.length})**\nSelect an order to delete:`,
           components: [row],
         });
 
       } catch (error) {
-        console.error('Error searching for order:', error);
+        console.error('Error fetching orders:', error);
         return interaction.editReply({
-          content: `❌ Error searching for order. Check bot permissions.`,
+          content: `❌ Error fetching orders. Check bot permissions.`,
         });
       }
     }
@@ -753,6 +759,63 @@ client.on('interactionCreate', async (interaction) => {
       };
 
       return await submitWholesaleOrder(interaction, orderId, orderData);
+    }
+  }
+
+  // -----------------------------------------
+  // SELECT MENU → Order Selection for Deletion
+  // -----------------------------------------
+  if (interaction.isStringSelectMenu()) {
+    if (interaction.customId === 'delete_select_order') {
+      const [messageId, channelId, orderId] = interaction.values[0].split('_');
+      
+      try {
+        const channel = await client.channels.fetch(channelId);
+        const orderMessage = await channel.messages.fetch(messageId);
+        const embed = orderMessage.embeds[0];
+        
+        const orderType = orderId.startsWith('pre') ? 'Preorder' : 'Wholesale';
+        
+        // Create confirmation embed with order details
+        const confirmEmbed = new EmbedBuilder()
+          .setTitle(`🗑️ Delete ${orderType}?`)
+          .setDescription(`**Order ID:** \`${orderId.toUpperCase()}\``)
+          .setColor(0xFF6B6B)
+          .setTimestamp();
+
+        // Add fields from original embed
+        if (embed.fields) {
+          embed.fields.forEach(field => {
+            confirmEmbed.addFields({ name: field.name, value: field.value, inline: field.inline });
+          });
+        }
+
+        // Create confirm/cancel buttons
+        const confirmButton = new ButtonBuilder()
+          .setCustomId(`delete_confirm_${messageId}`)
+          .setLabel('Yes, Delete')
+          .setStyle(ButtonStyle.Danger);
+
+        const cancelButton = new ButtonBuilder()
+          .setCustomId('delete_cancel')
+          .setLabel('Cancel')
+          .setStyle(ButtonStyle.Secondary);
+
+        const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
+
+        return interaction.update({
+          content: `⚠️ **Are you sure you want to delete this order?**`,
+          embeds: [confirmEmbed],
+          components: [row],
+        });
+      } catch (error) {
+        console.error('Error fetching order for deletion:', error);
+        return interaction.update({
+          content: `❌ Error: Order may have already been deleted.`,
+          embeds: [],
+          components: [],
+        });
+      }
     }
   }
 

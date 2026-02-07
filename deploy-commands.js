@@ -30,12 +30,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('delete')
-    .setDescription('Delete an order by ID')
-    .addStringOption(option =>
-      option.setName('order_id')
-        .setDescription('The order ID (e.g., pre261, who261)')
-        .setRequired(true)
-    ),
+    .setDescription('Delete an order (shows list of active orders)'),
 ].map(cmd => cmd.toJSON());
 
 // Register commands with Discord
