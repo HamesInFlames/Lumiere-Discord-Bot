@@ -84,10 +84,11 @@ ACTIONS:
 - "low" = need, running low, almost out, X left, need to order, should get
 - "out" = none left, ran out, empty, no more, finished
 - "status" = show inventory, list items, what do we need, check stock, inventory
-- "ignore" = messages about pastries, bread, cakes, sales, TGTG, waste, or unrelated chat
+- "chat" = conversational message about inventory (planning, will send list, questions about stock, etc.)
+- "ignore" = ONLY for messages about pastries, bread, cakes, sales, TGTG, waste (product stuff, not supplies)
 
 OUTPUT JSON only:
-{"action":"restock|low|out|status|ignore","items":["item1","item2"],"message":"friendly response"}
+{"action":"restock|low|out|status|chat|ignore","items":["item1","item2"],"message":"friendly response"}
 
 RULES:
 1. ONLY track supplies/ingredients from the list above
@@ -95,7 +96,10 @@ RULES:
 3. "Need: X, Y, Z" format = X, Y, Z are LOW
 4. Match loosely: "skim" = Skim milk, "oat" = Oat milk, "fruits" = all fruits
 5. Emojis and casual language OK
-6. Be helpful and friendly`;
+6. Be helpful and CONVERSATIONAL - respond naturally to planning messages
+7. "I will send a list" / "list coming" / "checking inventory" = respond with "chat" action and friendly message
+8. If someone is talking ABOUT inventory (not product counts), engage with them
+9. Only "ignore" product-related messages (pastries, bread, cakes, sales, TGTG)`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -298,6 +302,11 @@ async function processInventoryMessage(message) {
 
   if (parsed.action === 'unknown') {
     return null; // Don't respond to unknown messages
+  }
+
+  // Handle conversational messages about inventory
+  if (parsed.action === 'chat') {
+    return parsed.message || '👍 Got it! Send me the list whenever you\'re ready.';
   }
 
   if (parsed.action === 'status') {
