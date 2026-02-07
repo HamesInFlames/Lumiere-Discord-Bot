@@ -83,6 +83,35 @@
       "SF sweetener"
     ]
   },
-  "items": {},
-  "history": []
+  "items": {
+    "Milk": {
+      "status": "stocked",
+      "updatedAt": "2026-02-06T23:59:47.237Z"
+    },
+    "Oat milk": {
+      "status": "stocked",
+      "updatedAt": "2026-02-06T23:59:47.238Z"
+    },
+    "Napkins": {
+      "status": "low",
+      "updatedAt": "2026-02-07T00:00:08.187Z"
+    }
+  },
+  "history": [
+    {
+      "item": "Milk",
+      "action": "stocked",
+      "timestamp": "2026-02-06T23:59:47.237Z"
+    },
+    {
+      "item": "Oat milk",
+      "action": "stocked",
+      "timestamp": "2026-02-06T23:59:47.238Z"
+    },
+    {
+      "item": "Napkins",
+      "action": "low",
+      "timestamp": "2026-02-07T00:00:08.187Z"
+    }
+  ]
 }

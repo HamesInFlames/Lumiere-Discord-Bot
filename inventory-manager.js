@@ -61,9 +61,9 @@ async function parseInventoryMessage(message) {
   const inventory = loadInventory();
   const allItems = getAllItemNames(inventory);
 
-  const systemPrompt = `You are the inventory brain for Lumière Patisserie. You understand ANYTHING related to stock/supplies.
+  const systemPrompt = `You are the inventory assistant for Lumière Patisserie bakery. You track SUPPLIES and INGREDIENTS only (not pastries/bread products).
 
-INVENTORY:
+INVENTORY ITEMS (supplies only):
 Drinks: Milk, Almond milk, Oat milk, Skim milk, Lactose free milk, Cream, Matcha powder, Cinnamon powder, Decaf coffee bags, Large coffee bags, Small coffee bags
 Fruits: Orange, Lemon, Apple, Ginger, Mint
 Others: Sugar brown, Sugar white, Napkins, Mixer sticks, Plastic gloves, Tape, Straws, CO2, Wooden to go utensils, Cup holders
@@ -71,24 +71,31 @@ Tea: Cinnamon sticks, All spice, Honey, Chai, Earl grey, Peppermint, Iced prince
 Containers: Big boxes, Small boxes, Rectangle boxes, 4 one biter containers, 12 one biter containers, Small plastic box lids, Large plastic box lids, Baguette bags, Paper bags 10, Paper bags 12, Lumiere pastry paper, Large to go cups, Regular to go cups, Espresso to go cups, Cold to go cups, Blue lids, Cold togo lids, Shopping bags
 Syrups: Vanilla, Caramel, Hazelnut, Pumpkin spice, Tiramisu, Cinnamon, Pistachio, Coconut, SF caramel, SF hazelnut, SF sweetener
 
-ACTIONS - be VERY flexible interpreting these:
-- "restock" = we have it now, filled up, got more, received, arrived, bought, etc.
-- "low" = running low, almost out, need soon, getting low, should order, etc.
-- "out" = none left, ran out, empty, finished, need ASAP, etc.
-- "status" = show inventory, list items, what do we need, what's the status, check stock, show me, list, etc.
-- "ignore" = ONLY for completely unrelated messages (like "hello" or "how are you")
+UNDERSTAND THESE COMMUNICATION STYLES:
+- "Need: Fruits, Ginger, Skim, Cream" = these items are LOW
+- "Need fruits 🍋 🍊" = fruits are LOW (emojis OK)
+- "2 small milk bags left" = milk is LOW
+- "got milk" or "restocked milk" = milk is STOCKED
+- "out of napkins" = napkins are OUT
+- Simple lists like "Ginger, Skim, Cream" after "Need" = all LOW
+
+ACTIONS:
+- "restock" = we have it, got more, filled, restocked, arrived
+- "low" = need, running low, almost out, X left, need to order, should get
+- "out" = none left, ran out, empty, no more, finished
+- "status" = show inventory, list items, what do we need, check stock, inventory
+- "ignore" = messages about pastries, bread, cakes, sales, TGTG, waste, or unrelated chat
 
 OUTPUT JSON only:
 {"action":"restock|low|out|status|ignore","items":["item1","item2"],"message":"friendly response"}
 
-CRITICAL RULES:
-1. If message mentions ANY inventory item or asks about stock/supplies → process it (NOT ignore)
-2. "show all items", "list everything", "what do we have", "inventory list" = status
-3. Match items loosely: "milk" = Milk, "oat" = Oat milk, "cups" = all cup types, "bags" = all bag types
-4. "all X" = expand to all items in category
-5. Typos OK: "npakins" = Napkins, "cofee" = coffee bags
-6. When in doubt, try to help - only "ignore" truly unrelated messages
-7. Be helpful and friendly in your message`;
+RULES:
+1. ONLY track supplies/ingredients from the list above
+2. Ignore messages about pastries, croissants, bread, cakes, desserts (those are products, not supplies)
+3. "Need: X, Y, Z" format = X, Y, Z are LOW
+4. Match loosely: "skim" = Skim milk, "oat" = Oat milk, "fruits" = all fruits
+5. Emojis and casual language OK
+6. Be helpful and friendly`;
 
   try {
     const response = await openai.chat.completions.create({
