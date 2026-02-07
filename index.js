@@ -192,17 +192,24 @@ async function createCalendarEvent(orderType, orderId, data, parsedDate) {
     
     // Set date/time
     if (parsedDate) {
-      // Check if time was specified (if hours/minutes are not 12:00 or 00:00)
-      const hasTime = parsedDate.getHours() !== 12 && parsedDate.getHours() !== 0;
+      // Check if time was specified (chrono sets to 12:00 if no time given)
+      const hasTime = parsedDate.getHours() !== 12 || parsedDate.getMinutes() !== 0;
       
       if (hasTime) {
         // Event with specific time (1 hour duration)
+        // Format as local time string for Google Calendar (YYYY-MM-DDTHH:mm:ss)
+        const pad = n => n.toString().padStart(2, '0');
+        const localDateStr = `${parsedDate.getFullYear()}-${pad(parsedDate.getMonth() + 1)}-${pad(parsedDate.getDate())}T${pad(parsedDate.getHours())}:${pad(parsedDate.getMinutes())}:00`;
+        
         const endDate = new Date(parsedDate.getTime() + 60 * 60 * 1000);
-        event.start = { dateTime: parsedDate.toISOString(), timeZone: 'America/Toronto' };
-        event.end = { dateTime: endDate.toISOString(), timeZone: 'America/Toronto' };
+        const localEndStr = `${endDate.getFullYear()}-${pad(endDate.getMonth() + 1)}-${pad(endDate.getDate())}T${pad(endDate.getHours())}:${pad(endDate.getMinutes())}:00`;
+        
+        event.start = { dateTime: localDateStr, timeZone: 'America/Toronto' };
+        event.end = { dateTime: localEndStr, timeZone: 'America/Toronto' };
       } else {
         // All-day event
-        const dateStr = parsedDate.toISOString().split('T')[0];
+        const pad = n => n.toString().padStart(2, '0');
+        const dateStr = `${parsedDate.getFullYear()}-${pad(parsedDate.getMonth() + 1)}-${pad(parsedDate.getDate())}`;
         event.start = { date: dateStr };
         event.end = { date: dateStr };
       }
