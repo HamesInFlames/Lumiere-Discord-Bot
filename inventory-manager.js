@@ -61,45 +61,40 @@ async function parseInventoryMessage(message) {
   const inventory = loadInventory();
   const allItems = getAllItemNames(inventory);
 
-  const systemPrompt = `You are the inventory assistant for Lumière Patisserie bakery. You track SUPPLIES and INGREDIENTS only (not pastries/bread products).
+  const systemPrompt = `You're the friendly inventory helper for Lumière Patisserie! Think of yourself as a helpful coworker keeping track of supplies.
 
-INVENTORY ITEMS (supplies only):
-Drinks: Milk, Almond milk, Oat milk, Skim milk, Lactose free milk, Cream, Matcha powder, Cinnamon powder, Decaf coffee bags, Large coffee bags, Small coffee bags
-Fruits: Orange, Lemon, Apple, Ginger, Mint
-Others: Sugar brown, Sugar white, Napkins, Mixer sticks, Plastic gloves, Tape, Straws, CO2, Wooden to go utensils, Cup holders
-Tea: Cinnamon sticks, All spice, Honey, Chai, Earl grey, Peppermint, Iced princess, Chamomile, Coconut green, Strawberry kiwi, Raspberry lime, Lemon oolong, Ginger green, Jasmin, Green tea
-Containers: Big boxes, Small boxes, Rectangle boxes, 4 one biter containers, 12 one biter containers, Small plastic box lids, Large plastic box lids, Baguette bags, Paper bags 10, Paper bags 12, Lumiere pastry paper, Large to go cups, Regular to go cups, Espresso to go cups, Cold to go cups, Blue lids, Cold togo lids, Shopping bags
-Syrups: Vanilla, Caramel, Hazelnut, Pumpkin spice, Tiramisu, Cinnamon, Pistachio, Coconut, SF caramel, SF hazelnut, SF sweetener
+SUPPLIES WE TRACK (not pastries/breads - those are products):
+☕ Drinks: Milk, Almond milk, Oat milk, Skim milk, Lactose free milk, Cream, Matcha powder, Cinnamon powder, Decaf coffee bags, Large coffee bags, Small coffee bags
+🍋 Fruits: Orange, Lemon, Apple, Ginger, Mint
+📦 Others: Sugar brown, Sugar white, Napkins, Mixer sticks, Plastic gloves, Tape, Straws, CO2, Wooden to go utensils, Cup holders
+🍵 Tea: Cinnamon sticks, All spice, Honey, Chai, Earl grey, Peppermint, Iced princess, Chamomile, Coconut green, Strawberry kiwi, Raspberry lime, Lemon oolong, Ginger green, Jasmin, Green tea
+🥡 Containers: Big boxes, Small boxes, Rectangle boxes, 4 one biter containers, 12 one biter containers, Small plastic box lids, Large plastic box lids, Baguette bags, Paper bags 10, Paper bags 12, Lumiere pastry paper, Large to go cups, Regular to go cups, Espresso to go cups, Cold to go cups, Blue lids, Cold togo lids, Shopping bags
+🧴 Syrups: Vanilla, Caramel, Hazelnut, Pumpkin spice, Tiramisu, Cinnamon, Pistachio, Coconut, SF caramel, SF hazelnut, SF sweetener
 
-UNDERSTAND THESE COMMUNICATION STYLES:
-- "Need: Fruits, Ginger, Skim, Cream" = these items are LOW
-- "Need fruits 🍋 🍊" = fruits are LOW (emojis OK)
-- "2 small milk bags left" = milk is LOW
-- "got milk" or "restocked milk" = milk is STOCKED
-- "out of napkins" = napkins are OUT
-- Simple lists like "Ginger, Skim, Cream" after "Need" = all LOW
+HOW PEOPLE TALK:
+- "Need: Fruits, Ginger, Skim" or "running low on milk" or "2 bags left" = LOW
+- "got milk" or "restocked" or "just got shopping bags" = STOCKED  
+- "out of napkins" or "none left" = OUT
+- "show inventory" or "what do we need" or "list everything" = STATUS (show full list)
+- Casual chat about inventory, planning, "will send list later" = CHAT
+- Pastry counts, bread, cakes, TGTG, sales stuff = IGNORE (not supplies)
 
-ACTIONS:
-- "restock" = we have it, got more, filled, restocked, arrived
-- "low" = need, running low, almost out, X left, need to order, should get
-- "out" = none left, ran out, empty, no more, finished
-- "status" = show inventory, list items, what do we need, check stock, inventory
-- "chat" = conversational message about inventory (planning, will send list, questions about stock, etc.)
-- "ignore" = ONLY for messages about pastries, bread, cakes, sales, TGTG, waste (product stuff, not supplies)
+RESPOND WITH JSON:
+{"action":"restock|low|out|status|chat|ignore","items":["matched items"],"message":"your friendly response"}
 
-OUTPUT JSON only:
-{"action":"restock|low|out|status|chat|ignore","items":["item1","item2"],"message":"friendly response"}
+BE CONVERSATIONAL:
+- Match items loosely: "skim" = Skim milk, "oat" = Oat milk, "fruits" = Orange/Lemon/Apple
+- Write natural, warm responses like a coworker would
+- For status requests, just say something brief - the system will show the full list
+- For updates, confirm what you updated in a friendly way
+- For chat, respond naturally and helpfully
+- Emojis welcome but don't overdo it
 
-RULES:
-1. ONLY track supplies/ingredients from the list above
-2. Ignore messages about pastries, croissants, bread, cakes, desserts (those are products, not supplies)
-3. "Need: X, Y, Z" format = X, Y, Z are LOW
-4. Match loosely: "skim" = Skim milk, "oat" = Oat milk, "fruits" = all fruits
-5. Emojis and casual language OK
-6. Be helpful and CONVERSATIONAL - respond naturally to planning messages
-7. "I will send a list" / "list coming" / "checking inventory" = respond with "chat" action and friendly message
-8. If someone is talking ABOUT inventory (not product counts), engage with them
-9. Only "ignore" product-related messages (pastries, bread, cakes, sales, TGTG)`;
+Examples:
+"we need milk" → {"action":"low","items":["Milk"],"message":"Got it, marking milk as low!"}
+"just restocked all the syrups" → {"action":"restock","items":["Vanilla","Caramel",...],"message":"Nice! All syrups marked as stocked 👍"}
+"show me everything" → {"action":"status","items":[],"message":"Here's our full inventory:"}
+"I'll check stock tonight" → {"action":"chat","items":[],"message":"Sounds good! Just send me the list when you're ready."}`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -108,7 +103,7 @@ RULES:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: message }
       ],
-      temperature: 0.3,
+      temperature: 0.7,
       max_tokens: 500,
     });
 
@@ -239,50 +234,68 @@ function getPredictions() {
   return predictions;
 }
 
-// Format status as Discord message
+// Format status as Discord message - organized by category
 function formatStatusMessage() {
   const inventory = loadInventory();
   const status = getInventoryStatus();
-  let message = '📦 **INVENTORY STATUS**\n\n';
-
-  // Show problems first
-  if (status.out.length > 0) {
-    message += `❌ **OUT** (${status.out.length}): ${status.out.join(', ')}\n\n`;
-  }
   
-  if (status.low.length > 0) {
-    message += `⚠️ **LOW** (${status.low.length}): ${status.low.join(', ')}\n\n`;
-  }
+  // Category emoji map
+  const categoryEmoji = {
+    'Drinks': '☕',
+    'Fruits': '🍋',
+    'Others': '📦',
+    'Tea': '🍵',
+    'Containers': '🥡',
+    'Syrups': '🧴',
+  };
 
-  if (status.out.length === 0 && status.low.length === 0) {
-    if (status.stocked.length > 0) {
-      message += '✅ **All tracked items are stocked!**\n\n';
+  // Build the message
+  let message = '📋 **LUMIÈRE INVENTORY**\n';
+  message += '━━━━━━━━━━━━━━━━━━━━━\n\n';
+
+  // Show urgent issues first if any
+  if (status.out.length > 0 || status.low.length > 0) {
+    message += '🚨 **NEEDS ATTENTION:**\n';
+    if (status.out.length > 0) {
+      message += `❌ **Out:** ${status.out.join(', ')}\n`;
     }
-  }
-
-  // Show stocked items
-  if (status.stocked.length > 0) {
-    message += `✅ **STOCKED** (${status.stocked.length}): ${status.stocked.join(', ')}\n\n`;
-  }
-
-  // Show untracked items
-  if (status.unknown.length > 0) {
-    message += `📝 **NOT YET TRACKED** (${status.unknown.length}): ${status.unknown.slice(0, 10).join(', ')}`;
-    if (status.unknown.length > 10) {
-      message += ` +${status.unknown.length - 10} more`;
+    if (status.low.length > 0) {
+      message += `⚠️ **Low:** ${status.low.join(', ')}\n`;
     }
-    message += '\n\n';
+    message += '\n';
+  }
+
+  // Show items by category
+  for (const [category, items] of Object.entries(inventory.categories)) {
+    const emoji = categoryEmoji[category] || '📌';
+    message += `${emoji} **${category}**\n`;
+    
+    // Show each item with its status
+    const itemStatuses = items.map(item => {
+      const itemData = inventory.items[item];
+      if (!itemData) return `• ${item}`;
+      if (itemData.status === 'out') return `• ~~${item}~~ ❌`;
+      if (itemData.status === 'low') return `• ${item} ⚠️`;
+      if (itemData.status === 'stocked') return `• ${item} ✓`;
+      return `• ${item}`;
+    });
+    
+    message += itemStatuses.join('\n') + '\n\n';
   }
 
   // Add predictions if available
   const predictions = getPredictions();
   if (predictions.length > 0) {
-    message += `📊 **PREDICTIONS**:\n`;
-    for (const pred of predictions.slice(0, 5)) {
-      const emoji = pred.urgent ? '🔴' : '🟡';
-      message += `${emoji} ${pred.item}: restock every ~${pred.avgDays} days\n`;
+    message += '🔮 **Predictions** (based on history):\n';
+    for (const pred of predictions.slice(0, 3)) {
+      message += `• ${pred.item} - usually restock every ~${pred.avgDays} days\n`;
     }
+    message += '\n';
   }
+
+  // Legend
+  message += '━━━━━━━━━━━━━━━━━━━━━\n';
+  message += '`✓ stocked` `⚠️ low` `❌ out`';
 
   return message;
 }
@@ -330,13 +343,18 @@ async function processInventoryMessage(message) {
   }
 
   if (updatedItems.length === 0) {
-    return `❌ Couldn't find those items in inventory. Check spelling?`;
+    // Use AI's message if available, otherwise generic
+    return parsed.message || `Hmm, I couldn't find those items. Mind double-checking the names?`;
   }
 
+  // Use AI's conversational message if available
+  if (parsed.message) {
+    return parsed.message;
+  }
+
+  // Fallback to simple confirmation
   const emoji = status === 'stocked' ? '✅' : status === 'low' ? '⚠️' : '❌';
-  const statusText = status === 'stocked' ? 'RESTOCKED' : status === 'low' ? 'marked as LOW' : 'marked as OUT';
-  
-  return `${emoji} **${statusText}:** ${updatedItems.join(', ')}`;
+  return `${emoji} Updated: ${updatedItems.join(', ')}`;
 }
 
 module.exports = {
